@@ -20,6 +20,7 @@ public class Board extends JComponent {
 	// Numerous private variables with different characteristics
 	final private int COL = 10;
 	final private int ROW = 10;
+	private bool works = false;
 	private Tiles theBoard[][] = new Tiles[COL][ROW]; // The container for the
 	// checkerboard
 	private Tiles[][] tile = new Tiles[COL][ROW]; // Container for the tiles
