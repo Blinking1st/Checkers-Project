@@ -8,6 +8,7 @@ import javax.swing.border.Border;
 
 public class Mouse implements MouseListener {
 	final int Range = 75;
+	private int parker = 22;
 	private int selectedRow;
 	private int selectedCol;
 	private Tiles tile;
