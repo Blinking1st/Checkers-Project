@@ -11,9 +11,9 @@ public class Player {
 	 * Constructor for the Player class. Initializes a player with a specified side (Red or Black) and sets the initial number of pieces to 12, which is the standard starting count for each player in Checkers. The constructor also assigns the player's side, which is essential for determining valid moves and interactions with pieces on the game board throughout the course of the game.
 	 * @param type the side (Red or Black) that the player belongs to
 	 */
-	public Player(PlayerType type) {
+	public Player(PlayerType type, int pieceCount) {
 		side = type;
-		pieces = 20; //changes amount of peices player has
+		pieces = pieceCount;
 	}
 
 	/**
