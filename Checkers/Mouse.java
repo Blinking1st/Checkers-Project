@@ -31,11 +31,16 @@ public class Mouse implements MouseListener {
 			this.piece = tile.getPiece(); // Gets the piece at the tile.
 
 			if (piece.getSide() == board.turn()) { //If the turn corresponds with Red/Black player's turn
+				// During a multi-jump, only the piece that just jumped may be moved
+				if (board.isContinuousJump() && piece != board.getLastPieceMoved()) {
+					System.err.println("Must continue jumping with the same piece");
+					return;
+				}
 				System.out.println("---------------------");	//Output for organized debugging
 				board.clearPotentialMoves();
 				this.selectedRow = this.piece.getRow(); // Get selected piece coordinates
 				this.selectedCol = this.piece.getCol();
-				tile.selected(true);					//Passed as selected!	
+				tile.selected(true);					//Passed as selected!
 				this.board.getRootRowCol(this.selectedRow, this.selectedCol);	//Gives the board the coordinates of the clicked tile/piece
 				System.out.println("Piece occupies: " + selectedRow + ","
 						+ selectedCol);

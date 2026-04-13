@@ -49,6 +49,7 @@ public class Board extends JComponent {
 	private Player BLACK;
 	private ArrayList<Pieces> nextPiece = new ArrayList<>();
 	private String loser; // Prints losing side
+	private boolean continuousJump = false; // True when player must continue jumping same piece
 
 	/**
 	 * Constructor for the Board class. Creates the board and all components, and
@@ -242,34 +243,43 @@ public class Board extends JComponent {
 		return turnCounter;
 	}
 
+	/** Returns whether the current player is locked into continuing a multi-jump. */
+	public boolean isContinuousJump() {
+		return continuousJump;
+	}
+
+	/** Returns the last piece that was moved (used to enforce multi-jump). */
+	public Pieces getLastPieceMoved() {
+		return lastPieceMoved;
+	}
+
 	/**
 	 * Checks if a piece can perform a jump move. This method calculates the potential jump move based on the current position of the piece and the destination coordinates. It checks if the destination tile is unoccupied and if there is an opponent's piece (the "prey") in the correct position to be jumped over. If both conditions are met, it returns true, indicating that the jump is valid; otherwise, it returns false and switches turns.
 	 * @param jumper the piece that is attempting to jump
 	 * @return true if the jump is valid, false otherwise
 	 */
-	public boolean checkJump(Pieces jumper) { // Checks if a piece may jump.
-		// Jumper is the clicked piece.
-		// For very direct movements
-		currentRow = jumper.getRow();
-		currentCol = jumper.getCol();
-		System.out.println("Jumper begins at " + currentRow + "," + currentCol);
-		int rowDistance = (destRow - jumper.getRow());
-		int colDistance = (destCol - jumper.getCol());
-		preyRow = jumper.getRow() + (rowDistance / 2); // Location of "prey"
-		// piece
-		preyCol = jumper.getCol() + (colDistance / 2);
-      if (preyRow >= 0 && preyRow <= ROW - 1 && preyCol >= 0 && preyCol <= COL - 1) {
-		if (!theBoard[destRow][destCol].isOccupied() // If the destination is
-				// not occupied and the
-				// "prey" location is
-				&& (theBoard[preyRow][preyCol].isOccupied())) {
-			return true;
-		} else {
-			System.err.println("Cannot jump to " + destRow + "," + destCol);
-			switchTurns();
+	public boolean checkJump(Pieces jumper) {
+		int rowDistance = destRow - jumper.getRow();
+		int colDistance = destCol - jumper.getCol();
+		// A valid jump is exactly 2 steps diagonally
+		if (Math.abs(rowDistance) != 2 || Math.abs(colDistance) != 2) {
+			System.err.println("Not a valid jump distance to " + destRow + "," + destCol);
 			return false;
+		}
+		preyRow = jumper.getRow() + (rowDistance / 2);
+		preyCol = jumper.getCol() + (colDistance / 2);
+		if (preyRow >= 0 && preyRow < ROW && preyCol >= 0 && preyCol < COL) {
+			Tiles preyTile = theBoard[preyRow][preyCol];
+			if (!theBoard[destRow][destCol].isOccupied()
+					&& preyTile.isOccupied()
+					&& preyTile.getPiece().getSide() != jumper.getSide()) {
+				System.out.println("Valid jump: " + jumper.getRow() + "," + jumper.getCol()
+						+ " -> prey " + preyRow + "," + preyCol
+						+ " -> land " + destRow + "," + destCol);
+				return true;
 			}
 		}
+		System.err.println("Cannot jump to " + destRow + "," + destCol);
 		return false;
 	}
 
@@ -278,242 +288,67 @@ public class Board extends JComponent {
 	 * @param jumper the piece for which to check jump availability
 	 * @return true if there is at least one valid jump move available for the piece, false otherwise
 	 */
-	public boolean jumpAvailable(Pieces jumper) { // Checks numerous potential
-		// destinations
-		int switchCase = 0, RowMovement = 0, jumperRow = 0, jumperCol = 0;
-		if (jumper.getType() == PieceType.RED) { // Depending on the piece type,
-			// switch case checks
-			// different areas
-			switchCase = 1;
-			RowMovement = 2; // Red pieces may only move South
-		} else if (jumper.getType() == PieceType.BLACK) {
-			switchCase = 2; // Black pieces may only move North
-			RowMovement = -2;
-		} else if (jumper.getType() == PieceType.RED_KING // Kings move in all 4
-				// directions
-				|| jumper.getType() == PieceType.BLACK_KING) {
-			switchCase = 3;
+	public boolean jumpAvailable(Pieces jumper) {
+		int row = jumper.getRow();
+		int col = jumper.getCol();
+		PieceType type = jumper.getType();
+
+		// Directions to check: {rowDelta, colDelta} toward prey
+		int[][] directions;
+		if (type == PieceType.RED) {
+			directions = new int[][]{{1, -1}, {1, 1}};           // south only
+		} else if (type == PieceType.BLACK) {
+			directions = new int[][]{{-1, -1}, {-1, 1}};         // north only
+		} else {
+			directions = new int[][]{{-1, -1}, {-1, 1}, {1, -1}, {1, 1}}; // all 4
 		}
 
-		jumperRow = jumper.getRow();
-		jumperCol = jumper.getCol();
-
-		switch (switchCase) {
-			case 1: { // Red pieces
-				if ((jumperRow > -1 && jumperRow < ROW)
-						&& (jumperCol > -1 && jumperCol < COL)) { // Checks if within
-					// board bounds
-					if ((jumperRow + RowMovement) <= ROW - 1) {
-						if (jumperCol != COL - 1 && jumperCol < COL - 2 && jumperCol != 0
-								&& jumperCol > 1) { // If the selected piece is not
-							// near any edges
-							if (!theBoard[jumperRow + RowMovement][jumperCol + 2] // Check
-									// right
-									// location
-									.isOccupied()
-									&& theBoard[jumperRow + 1][jumperCol + 1]
-									.isOccupied()) {
-								return true;
-							}
-							if (!theBoard[jumperRow + RowMovement][jumperCol - 2] // Check
-									// left
-									// location
-									.isOccupied()
-									&& theBoard[jumperRow + 1][jumperCol - 1]
-									.isOccupied()) {
-								return true;
-							}
-							return false;
-						}
-
-						if (jumperCol >= COL - 2) { // if jumper is close to right edge
-							if (!theBoard[jumperRow + RowMovement][jumperCol - 2]
-									.isOccupied()
-									&& theBoard[jumperRow + 1][jumperCol - 1]
-									.isOccupied()) {
-								return true;
-							}
-						}
-						if (jumperCol <= 1) {
-							if (!theBoard[jumperRow + RowMovement][jumperCol + 2]
-									.isOccupied()
-									&& theBoard[jumperRow + 1][jumperCol + 1]
-									.isOccupied()) {
-								return true;
-							}
-						}
-						return false;
-					} else
-						return false;
+		for (int[] dir : directions) {
+			int preyR = row + dir[0];
+			int preyC = col + dir[1];
+			int landR = row + dir[0] * 2;
+			int landC = col + dir[1] * 2;
+			if (landR >= 0 && landR < ROW && landC >= 0 && landC < COL) {
+				Tiles preyTile = theBoard[preyR][preyC];
+				if (preyTile.isOccupied()
+						&& preyTile.getPiece().getSide() != jumper.getSide()
+						&& !theBoard[landR][landC].isOccupied()) {
+					return true;
 				}
 			}
-			break;
-			case 2: { // Black pieces
-				if ((jumperRow > -1 && jumperRow < ROW)
-						&& (jumperCol > -1 && jumperCol < COL)) { // Checks if within
-					// board bounds
-					if ((jumperRow + RowMovement) > -1) { // if row within bounds
-
-						if (jumperCol != COL - 1 && jumperCol < COL - 2 && jumperCol != 0
-								&& jumperCol > 1) { // if column not near edges
-
-							if (!theBoard[jumperRow + RowMovement][jumperCol + 2]
-									.isOccupied()
-									&& theBoard[jumperRow - 1][jumperCol + 1]
-									.isOccupied()) {
-								return true;
-							}
-							if (!theBoard[jumperRow + RowMovement][jumperCol - 2]
-									.isOccupied()
-									&& theBoard[jumperRow - 1][jumperCol - 1]
-									.isOccupied()) {
-								return true;
-							}
-							return false;
-						}
-						if (jumperCol >= COL - 2) { // if jumper is close to right edge
-							if (!theBoard[jumperRow + RowMovement][jumperCol - 2]
-									.isOccupied()
-									&& theBoard[jumperRow - 1][jumperCol - 1]
-									.isOccupied()) {
-								return true;
-							}
-						}
-						if (jumperCol <= 1) {
-							if (!theBoard[jumperRow + RowMovement][jumperCol + 2]
-									.isOccupied()
-									&& theBoard[jumperRow - 1][jumperCol + 1]
-									.isOccupied()) {
-								return true;
-							}
-						}
-						return false;
-					} else
-						return false;
-				}
-			}
-			break;
-			case 3: { // King availability
-				int KingNorth = jumperRow - 2;
-				int KingEast = jumperCol + 2;
-				int KingSouth = jumperRow + 2;
-				int KingWest = jumperCol - 2;
-				if (KingSouth <= ROW - 1 && KingEast <= COL - 1 && KingNorth >= 0
-						&& KingWest >= 0) { // If destination is within bounds
-					System.out.println(KingSouth + " " + KingEast + " " + KingNorth
-							+ " " + KingWest);
-					if (!theBoard[KingNorth][KingEast].isOccupied()
-							&& theBoard[jumperRow - 1][jumperCol + 1].isOccupied()) {
-						System.out.println("NorthEast open");
-						return true;
-					}
-					if (!theBoard[KingNorth][KingWest].isOccupied()
-							&& theBoard[jumperRow - 1][jumperCol - 1].isOccupied()) {
-						System.out.println("NorthWest open");
-						return true;
-					}
-					if (!theBoard[KingSouth][KingEast].isOccupied()
-							&& theBoard[jumperRow + 1][jumperCol + 1].isOccupied()) {
-						System.out.println("SouthEast open");
-						return true;
-					}
-					if (!theBoard[KingSouth][KingWest].isOccupied()
-							&& theBoard[jumperRow + 1][jumperCol - 1].isOccupied()) {
-						System.out.println("SouthWest open");
-						return true;
-					}
-				}
-				if ((jumperRow == 0 || jumperRow == 1)
-						&& ((KingEast <= COL - 1) && (KingWest >= 0))) { // near north edge
-					if (!theBoard[KingSouth][KingEast].isOccupied()
-							&& theBoard[jumperRow + 1][jumperCol + 1].isOccupied()) {
-						return true;
-					}
-					if (!theBoard[KingSouth][KingWest].isOccupied()
-							&& theBoard[jumperRow + 1][jumperCol - 1].isOccupied()) {
-						return true;
-					}
-				}
-				if ((jumperRow == ROW - 1 || jumperRow == ROW - 2)
-						&& ((KingEast <= COL - 3) && (KingWest >= 0))) { // near south edge
-					if (!theBoard[KingNorth][KingEast].isOccupied()
-							&& theBoard[jumperRow - 1][jumperCol + 1].isOccupied()) {
-						return true;
-					}
-					if (!theBoard[KingNorth][KingWest].isOccupied()
-							&& theBoard[jumperRow - 1][jumperCol - 1].isOccupied()) {
-						return true;
-					}
-				}
-				if ((jumperRow == ROW - 1 || jumperRow == ROW - 2)
-						&& ((KingNorth >= 0) && (KingSouth <= ROW - 3))) { // near right edge
-					if (!theBoard[KingNorth][KingWest].isOccupied()
-							&& theBoard[jumperRow - 1][jumperCol - 1].isOccupied()) {
-						return true;
-					}
-					if (!theBoard[KingSouth][KingWest].isOccupied()
-							&& theBoard[jumperRow + 1][jumperCol - 1].isOccupied()) {
-						return true;
-					}
-				}
-				if ((jumperRow == 0 || jumperRow == 1)
-						&& ((KingNorth >= 0) && (KingSouth <= ROW - 3))) { // near left edge
-					if (!theBoard[KingNorth][KingEast].isOccupied()
-							&& theBoard[jumperRow - 1][jumperCol + 1].isOccupied()) {
-						return true;
-					}
-					if (!theBoard[KingSouth][KingEast].isOccupied()
-							&& theBoard[jumperRow + 1][jumperCol + 1].isOccupied()) {
-						return true;
-					}
-				}
-				return false;
-			}
-			default:
-				System.err.println("Default case");
-				break;
 		}
 		return false;
 	}
 
 	/**
-	 * Executes a jump move for a piece. This method is called when a piece is selected to perform a jump move. It checks if the jump is valid using the checkJump method, and if it is, it moves the piece to the destination tile, removes the jumped piece from the board, and updates the game state accordingly (e.g., updating the player's piece count, checking for crowning, and checking for win conditions). If there are additional jump moves available for the same piece after the jump, it allows the player to continue jumping with that piece.
-	 * @param jumper the piece that is performing the jump
+	 * Executes the jump described by the current destRow/destCol and preyRow/preyCol.
+	 * checkJump(jumper) MUST be called before this to validate and set those fields.
 	 */
 	public void jumpPieces(Pieces jumper) {
-
+		// Use jumper's own stored position as the source (not the shared currentRow/currentCol)
+		// to avoid any desync from the shared mutable fields.
+		int srcRow = jumper.getRow();
+		int srcCol = jumper.getCol();
 		Pieces prey = theBoard[preyRow][preyCol].getPiece();
-		Tiles t = theBoard[currentRow][currentCol];
-		jumper = t.getPiece();
-		if (checkJump(jumper)) {
-			if (jumper.getType() == prey.getType()) {
-				jumper.talk();
-				prey.talk();
-				System.err.println("Cannot eat same side piece");
-				return;
-			}
-			theBoard[destRow][destCol].addPiece(jumper);
-			theBoard[currentRow][currentCol].delete();
-			jumper.moved(destRow, destCol);
-			lastPieceMoved = jumper;
-			checkingTheCrown(jumper, destRow, destCol);
-			theBoard[preyRow][preyCol].delete();
-			if (prey.getType() == PieceType.RED
-					|| prey.getType() == PieceType.RED_KING) {
-				RED.pieceEaten();
-			} else if (prey.getType() == PieceType.BLACK
-					|| prey.getType() == PieceType.BLACK_KING) {
-				BLACK.pieceEaten();
-			}
-			checkWin();
-		}
-		if (jumpAvailable(lastPieceMoved)) {
-			if (checkJump(lastPieceMoved)) {
-				jumpPieces(lastPieceMoved);
-			} else
-				return;
-		} else
+		if (prey == null) {
+			System.err.println("No piece to jump over at " + preyRow + "," + preyCol);
 			return;
+		}
+		theBoard[destRow][destCol].addPiece(jumper);
+		theBoard[srcRow][srcCol].delete();
+		jumper.moved(destRow, destCol);
+		lastPieceMoved = jumper;
+		checkingTheCrown(jumper, destRow, destCol);
+		theBoard[preyRow][preyCol].delete();
+		if (prey.getSide() == PlayerType.RED) {
+			RED.pieceEaten();
+		} else {
+			BLACK.pieceEaten();
+		}
+		checkWin();
+		// Keep currentRow/currentCol pointing at the piece's new position for multi-jump
+		currentRow = destRow;
+		currentCol = destCol;
 	}
 
 	/**
@@ -528,62 +363,80 @@ public class Board extends JComponent {
 		System.out.println(currentRow + "," + currentCol
 				+ " would like to go to " + destRow + "," + destCol);
 		if ((theBoard[currentRow][currentCol].isOccupied())
-				&& ((destRow + destCol) % 2 == 1)) { // Gray tiles
+				&& ((destRow + destCol) % 2 == 1)) { // Gray tiles only
 			Pieces root = theBoard[currentRow][currentCol].getPiece();
-			if (jumpAvailable(root) == false) {
+
+			// Guard: currentRow/currentCol can be stale from a previous turn
+			// if the player clicks a destination before selecting their own piece.
+			if (root.getSide() != turn()) {
+				System.err.println("No piece selected — please click your piece first");
+				return;
+			}
+
+			// Use the piece's own stored position as ground truth for all
+			// calculations, avoiding any desync with the shared currentRow/currentCol.
+			int pieceRow = root.getRow();
+			int pieceCol = root.getCol();
+
+			if (!jumpAvailable(root)) {
+				// ── Normal move ──────────────────────────────────────────────
+				boolean diagonal1Step =
+						(Math.abs(destRow - pieceRow) == 1)
+						&& (Math.abs(destCol - pieceCol) == 1);
+
 				if (root.getType() == PieceType.BLACK_KING
 						|| root.getType() == PieceType.RED_KING) {
-					if ((Math.abs(destRow - currentRow) == 1)
-							|| (Math.abs(destCol - currentCol) == 1)) {
-
-						if (theBoard[destRow][destCol].isOccupied() == false) {
-							theBoard[destRow][destCol].addPiece(root);
-							theBoard[currentRow][currentCol].delete();
-							root.moved(destRow, destCol);
-							lastPieceMoved = root;
-							System.out.println("Root piece moved to " + destRow
-									+ "," + destCol);
-							switchTurns();
-						}
+					if (diagonal1Step && !theBoard[destRow][destCol].isOccupied()) {
+						theBoard[destRow][destCol].addPiece(root);
+						theBoard[pieceRow][pieceCol].delete();
+						root.moved(destRow, destCol);
+						lastPieceMoved = root;
+						System.out.println("King moved to " + destRow + "," + destCol);
+						switchTurns();
 					}
 
-					// Normal piece movement
-				} else if ((root.getType() == PieceType.BLACK || root.getType() == PieceType.RED)) {
+				} else if (root.getType() == PieceType.RED
+						|| root.getType() == PieceType.BLACK) {
 
-					if ((root.getType() == PieceType.RED && (destRow > currentRow))
-							|| (root.getType() == PieceType.BLACK && (destRow < currentRow))) {
-						if ((Math.abs(destRow - currentRow) == 1)
-								|| (Math.abs(destCol - currentCol) == 1)) {
+					boolean correctDirection =
+							(root.getType() == PieceType.RED  && destRow > pieceRow)
+							|| (root.getType() == PieceType.BLACK && destRow < pieceRow);
 
-							if (theBoard[destRow][destCol].isOccupied() == false) {
-								theBoard[destRow][destCol].addPiece(root);
-								theBoard[currentRow][currentCol].delete();
-								root.moved(destRow, destCol);
-								lastPieceMoved = root;
-								// System.out.println("Last piece moved "
-								// + lastPieceMoved.getRow() + ","
-								// + lastPieceMoved.getCol());
-								switchTurns();
-								System.out.println("Root piece moved to "
-										+ destRow + "," + destCol);
-								checkingTheCrown(root, destRow, destCol);
-							}
-						}
-
-					} else {
-						System.err
-								.println("Normal pieces can't move backwards");
+					if (!correctDirection) {
+						System.err.println("Normal pieces can't move backwards");
 						return;
 					}
+					if (diagonal1Step && !theBoard[destRow][destCol].isOccupied()) {
+						theBoard[destRow][destCol].addPiece(root);
+						theBoard[pieceRow][pieceCol].delete();
+						root.moved(destRow, destCol);
+						lastPieceMoved = root;
+						switchTurns();
+						System.out.println("Piece moved to " + destRow + "," + destCol);
+						checkingTheCrown(root, destRow, destCol);
+					}
 				}
+
 			} else {
+				// ── Jump required ────────────────────────────────────────────
 				if (checkJump(root)) {
 					jumpPieces(root);
-					switchTurns();
+					if (jumpAvailable(lastPieceMoved)) {
+						continuousJump = true;
+						currentRow = lastPieceMoved.getRow();
+						currentCol = lastPieceMoved.getCol();
+					} else {
+						continuousJump = false;
+						switchTurns();
+					}
+				} else {
+					System.err.println("A jump is available with the selected piece"
+							+ " — destination must be exactly 2 diagonal steps away"
+							+ " over an enemy piece.");
 				}
 			}
 		} else {
-			System.err.println("Cannot move onto white tile bounds");
+			System.err.println("Cannot move to that tile");
 			return;
 		}
 	}
@@ -612,7 +465,7 @@ public class Board extends JComponent {
 						.showMessageDialog(
 								frame,
 								"Checkers/Draughts is a board game designed to be played by two players.\n"
-										+ "\nThe objective is to \"eat\" all the pieces of the other side. This game is played only on the darker tiles of the board."
+										+ "\nThe objective is to eat all the pieces of the other side. This game is played only on the darker tiles of the board."
 										+ "\nNormal pieces may only move diagonally forward one space at a time, if a same-side piece is present, they are not able to move."
 										+ "\nPieces may only eat other-side pieces if there is another piece diagonal to them, and the tile behind that piece is open."
 										+ "\nIf the opportunity to eat a piece is present, the player must eat the piece.\n"
