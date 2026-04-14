@@ -127,7 +127,7 @@ public class Tiles extends JPanel {
 					|| piece.getType() == PieceType.BLACK_KING) {
 				g2.setColor(Color.BLACK);
 				if (piece.getType() == PieceType.BLACK_KING) {
-					g2.setColor(Color.LIGHT_GRAY);					//Black kings become light gray
+					g2.setColor(Color.lightGray);					//Black kings become light gray
 				}
 			} else if (piece.getType() == PieceType.RED
 					|| piece.getType() == PieceType.RED_KING) {
