@@ -133,7 +133,7 @@ public class Tiles extends JPanel {
 					|| piece.getType() == PieceType.RED_KING) {
 				g2.setColor(Color.RED);
 				if (piece.getType() == PieceType.RED_KING) {
-					g2.setColor(Color.MAGENTA);						//Red kings become bright magenta
+					g2.setColor(Color.YELLOW);						//Red kings become bright magenta
 				}
 			}
 			g2.fillOval(5, 5, 65, 65); // Creates "checker" look
