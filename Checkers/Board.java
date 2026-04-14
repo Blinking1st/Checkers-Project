@@ -72,7 +72,7 @@ public class Board extends JComponent {
 	 * pieceRows, and numPieces accordingly and allocates the board arrays.
 	 */
 	private void chooseBoardSize() {
-		Object[] options = {"8x8 (12 pieces each)", "10x10 (20 pieces each)"};
+		Object[] options = {"Intermediate(8x8,12p)", "Advanced(10x10,20p)"};
 		int choice = JOptionPane.showOptionDialog(
 				null,
 				"Select a board size to play on:",
