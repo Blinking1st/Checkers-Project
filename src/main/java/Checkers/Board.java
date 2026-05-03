@@ -1,13 +1,10 @@
 package Checkers;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
 
-import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -15,6 +12,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.Timer;
 
 public class Board extends JComponent {
 	// Numerous private variables with different characteristics
@@ -26,17 +24,10 @@ public class Board extends JComponent {
 	private Tiles[][] tile;
 	private JFrame frame;
 	private JPanel panel;
-	private ArrayList<Pieces> redPieces = new ArrayList<>(); // Holds all the
-	// pieces.
-	private ArrayList<Pieces> blackPieces = new ArrayList<>(); // Used in
-	// construction
-	// of the board
 	private JMenuBar menuBar;
 	private JMenu menu; // Menu
 	private JMenuItem help;
 	private JMenuItem resign; // Resign option
-	private int redCounter = 0;
-	private int blackCounter = 0;
 	private int destRow = 0;
 	private int destCol = 0;
 	private int currentRow = 0;
@@ -47,9 +38,12 @@ public class Board extends JComponent {
 	private Pieces lastPieceMoved; // Proposed for a path-finding function...
 	private Player RED; // Players of the game
 	private Player BLACK;
-	private ArrayList<Pieces> nextPiece = new ArrayList<>();
 	private String loser; // Prints losing side
 	private boolean continuousJump = false; // True when player must continue jumping same piece
+	private boolean playComputer = false;
+	private boolean computerThinking = false;
+	private PlayerType computerSide = PlayerType.RED;
+	private CheckersAI computerPlayer = new CheckersAI();
 
 	/**
 	 * Constructor for the Board class. Creates the board and all components, and
@@ -63,8 +57,10 @@ public class Board extends JComponent {
 		createMenu();
 		BLACK = new Player(PlayerType.BLACK, numPieces);
 		RED = new Player(PlayerType.RED, numPieces);
+		chooseOpponent();
 		frame.add(panel);
 		frame.setVisible(true);
+		maybeStartComputerTurn();
 	}
 
 	/**
@@ -99,6 +95,35 @@ public class Board extends JComponent {
 		tile = new Tiles[ROW][COL];
 	}
 
+	private void chooseOpponent() {
+		Object[] options = {"Two players", "Play computer"};
+		int choice = JOptionPane.showOptionDialog(
+				frame,
+				"Choose the GUI game type:",
+				"Checkers - Opponent",
+				JOptionPane.DEFAULT_OPTION,
+				JOptionPane.QUESTION_MESSAGE,
+				null,
+				options,
+				options[0]);
+		playComputer = choice == 1;
+		if (!playComputer) {
+			return;
+		}
+
+		Object[] sides = {"Black", "Red"};
+		int sideChoice = JOptionPane.showOptionDialog(
+				frame,
+				"Choose your side. Black moves first:",
+				"Checkers - Side",
+				JOptionPane.DEFAULT_OPTION,
+				JOptionPane.QUESTION_MESSAGE,
+				null,
+				sides,
+				sides[0]);
+		computerSide = sideChoice == 1 ? PlayerType.BLACK : PlayerType.RED;
+	}
+
 	/**
 	 * Checks if either side has won the game. If one side has no pieces left, the other side wins. 
 	 */
@@ -115,18 +140,71 @@ public class Board extends JComponent {
 		}
 	}
 
+	public boolean isComputerTurn() {
+		return playComputer && turn() == computerSide;
+	}
+
+	private void maybeStartComputerTurn() {
+		if (!playComputer || computerThinking || continuousJump
+				|| turn() != computerSide || frame == null || !frame.isDisplayable()) {
+			return;
+		}
+
+		computerThinking = true;
+		Timer timer = new Timer(300, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				makeComputerMove();
+				computerThinking = false;
+			}
+		});
+		timer.setRepeats(false);
+		timer.start();
+	}
+
+	private void makeComputerMove() {
+		if (frame == null || !frame.isDisplayable()) {
+			return;
+		}
+
+		CheckersAI.Move move = computerPlayer.chooseMove(theBoard, computerSide);
+		if (move == null) {
+			JOptionPane.showMessageDialog(frame,
+					computerSide + " has no legal moves. "
+							+ CheckersAI.opponent(computerSide) + " wins!");
+			frame.dispose();
+			return;
+		}
+
+		applyBoardMove(move);
+		if (frame.isDisplayable()) {
+			switchTurns();
+			panel.repaint();
+		}
+	}
+
+	private void applyBoardMove(CheckersAI.Move move) {
+		for (int[] captured : move.getCaptured()) {
+			Pieces prey = theBoard[captured[0]][captured[1]].getPiece();
+			if (prey != null && prey.getSide() == PlayerType.RED) {
+				RED.pieceEaten();
+			} else if (prey != null) {
+				BLACK.pieceEaten();
+			}
+		}
+
+		CheckersAI.applyMove(theBoard, move);
+		lastPieceMoved = theBoard[move.getToRow()][move.getToCol()].getPiece();
+		currentRow = move.getToRow();
+		currentCol = move.getToCol();
+		checkWin();
+	}
+
 	/**
 	 * Switches turns after a move is made. Increments the turn counter, which is used to determine which player's turn it is.
 	 */
 	public void switchTurns() { // Once a move is made, switch/increment turns
 		turnCounter++;
-	}
-
-	/**
-	 * Clears the list of potential moves for a piece. This is used to reset the state of the game after a move is made, ensuring that the next piece's potential moves are calculated correctly.
-	 */
-	public void clearPotentialMoves() {
-		nextPiece.clear();
 	}
 
 	/**
@@ -189,13 +267,9 @@ public class Board extends JComponent {
 			for (int j = 0; j < COL; j++) {
 				if ((i + j) % 2 == 1) {
 					if (i < pieceRows) {
-						redPieces.add(new Pieces(i, j, PieceType.RED));
-						theBoard[i][j].addPiece(redPieces.get(redCounter));
-						redCounter++;
+						theBoard[i][j].addPiece(new Pieces(i, j, PieceType.RED));
 					} else if (i >= ROW - pieceRows) {
-						blackPieces.add(new Pieces(i, j, PieceType.BLACK));
-						theBoard[i][j].addPiece(blackPieces.get(blackCounter));
-						blackCounter++;
+						theBoard[i][j].addPiece(new Pieces(i, j, PieceType.BLACK));
 					}
 				}
 			}
@@ -362,6 +436,43 @@ public class Board extends JComponent {
 		destCol = dCol;
 		System.out.println(currentRow + "," + currentCol
 				+ " would like to go to " + destRow + "," + destCol);
+		if (isComputerTurn()) {
+			System.err.println("Wait for the computer to finish its turn");
+			return;
+		}
+		if (!theBoard[currentRow][currentCol].isOccupied()) {
+			System.err.println("No piece selected - please click your piece first");
+			return;
+		}
+
+		Pieces selected = theBoard[currentRow][currentCol].getPiece();
+		if (selected.getSide() != turn()) {
+			System.err.println("No piece selected - please click your piece first");
+			return;
+		}
+
+		CheckersAI.Move guiMove = CheckersAI.findLegalMove(theBoard, turn(),
+				currentRow, currentCol, destRow, destCol);
+		if (guiMove == null) {
+			System.err.println("Invalid move. If a capture is available, it must be taken.");
+			return;
+		}
+
+		continuousJump = false;
+		applyBoardMove(guiMove);
+		if (frame.isDisplayable()) {
+			switchTurns();
+			panel.repaint();
+			maybeStartComputerTurn();
+		}
+	}
+
+	public void movePiecesOld(int dRow, int dCol) {
+		int startingTurn = turnCounter;
+		destRow = dRow;
+		destCol = dCol;
+		System.out.println(currentRow + "," + currentCol
+				+ " would like to go to " + destRow + "," + destCol);
 		if ((theBoard[currentRow][currentCol].isOccupied())
 				&& ((destRow + destCol) % 2 == 1)) { // Gray tiles only
 			Pieces root = theBoard[currentRow][currentCol].getPiece();
@@ -438,6 +549,9 @@ public class Board extends JComponent {
 		} else {
 			System.err.println("Cannot move to that tile");
 			return;
+		}
+		if (turnCounter != startingTurn) {
+			maybeStartComputerTurn();
 		}
 	}
 

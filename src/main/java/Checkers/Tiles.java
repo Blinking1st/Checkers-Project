@@ -11,10 +11,8 @@ public class Tiles extends JPanel {
 	final private int HEIGHT = 75;
 	private Pieces piece;
 	private Board board;
-	private boolean PieceAdded = false;
 	private int row;
 	private int col;
-	private boolean select;
 
 	/**
 	 * Constructor for the Tiles class. Initializes a tile with specific row and column coordinates and associates it with the game board. The constructor sets up the tile's position on the board and prepares it to hold pieces as the game progresses. By providing the row, column, and board reference, this constructor allows the tile to interact with the overall game state and respond to player actions effectively.
@@ -65,7 +63,6 @@ public class Tiles extends JPanel {
 	 */
 	public void addPiece(Pieces p) {
 		piece = p;
-		PieceAdded = true;
 	}
 
 	/**
@@ -73,10 +70,7 @@ public class Tiles extends JPanel {
 	 * @return true if the tile is occupied by a piece, false otherwise
 	 */
 	public boolean isOccupied() {
-		if (piece != null) {
-			return true;
-		} else
-			return false;
+		return piece != null;
 	}
 
 	/**
@@ -84,11 +78,9 @@ public class Tiles extends JPanel {
 	 * @param bool a boolean value indicating whether the tile is being selected (true) or deselected (false)
 	 */
 	public void selected(boolean bool) {
-		this.select = bool;
-		if (this.select == false) { // If the destination is a non-piece holding tile, it will set the destination coordinates
+		if (!bool) { // If the destination is a non-piece holding tile, it will set the destination coordinates
 			board.movePieces(row, col); // Gives board destination coordinates
 		}
-		this.select = false;		//Refreshes the function
 	}
 
 	/**
@@ -138,6 +130,5 @@ public class Tiles extends JPanel {
 			}
 			g2.fillOval(5, 5, 65, 65); // Creates "checker" look
 		}
-		repaint();		//Continuously repaint to make sure the pieces appear
 	}
 }

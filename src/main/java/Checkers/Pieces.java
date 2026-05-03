@@ -7,8 +7,6 @@ public class Pieces extends JComponent {
 	private PlayerType side;
 	private int thisRow = 0;
 	private int thisCol = 0;
-	private boolean potentialLocation;
-	private boolean clicked = false;
 
 	/**
 	 * Constructor for the Pieces class. Initializes a piece with its row and column coordinates, as well as its type (Red, Red King, Black, or Black King). The constructor also determines the side (Red or Black) based on the type of the piece. This setup allows the piece to be properly represented on the game board and interact according to the rules of Checkers.
@@ -91,12 +89,17 @@ public class Pieces extends JComponent {
 		thisCol = col;
 	}
 
-	/** 
-	 * Marks the piece as a potential move location. This method is called when a tile is clicked that is not occupied by a piece, indicating that it may be a valid destination for a move or jump. By setting the potentialLocation flag to true, this method allows the game logic to recognize that the piece can potentially move to this location, which is essential for validating moves and providing feedback to the player about possible actions on the game board.
-	 * @return true if the location is marked as a potential move, false otherwise
-	*/
-	public boolean potentialMove() {
-		potentialLocation = true;
-		return potentialLocation;
+	void movedSilently(int row, int col) {
+		thisRow = row;
+		thisCol = col;
 	}
+
+	void crownedSilently() {
+		if (type == PieceType.RED) {
+			type = PieceType.RED_KING;
+		} else if (type == PieceType.BLACK) {
+			type = PieceType.BLACK_KING;
+		}
+	}
+
 }

@@ -4,10 +4,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 
 import javax.swing.BorderFactory;
-import javax.swing.border.Border;
 
 public class Mouse implements MouseListener {
-	final int Range = 75;
 	private int selectedRow;
 	private int selectedCol;
 	private Tiles tile;
@@ -27,6 +25,10 @@ public class Mouse implements MouseListener {
 			return; // Should never happen
 		}
 		this.board = tile.getBoard();
+		if (board.isComputerTurn()) {
+			System.err.println("Computer is thinking");
+			return;
+		}
 		if (tile.isOccupied()) { //Determines if the tile holds a piece
 			this.piece = tile.getPiece(); // Gets the piece at the tile.
 
@@ -37,7 +39,6 @@ public class Mouse implements MouseListener {
 					return;
 				}
 				System.out.println("---------------------");	//Output for organized debugging
-				board.clearPotentialMoves();
 				this.selectedRow = this.piece.getRow(); // Get selected piece coordinates
 				this.selectedCol = this.piece.getCol();
 				tile.selected(true);					//Passed as selected!
@@ -68,7 +69,9 @@ public class Mouse implements MouseListener {
 	 * @param e the MouseEvent triggered by the mouse release
 	 */
 	public void mouseReleased(MouseEvent e) {
-	tile.setBorder(BorderFactory.createEmptyBorder());
+		if (tile != null) {
+			tile.setBorder(BorderFactory.createEmptyBorder());
+		}
 	}
 
 	@Override
