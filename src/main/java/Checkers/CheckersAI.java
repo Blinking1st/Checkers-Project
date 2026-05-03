@@ -182,6 +182,65 @@ public class CheckersAI {
         return null;
     }
 
+    /**
+     * Finds only the next step requested by a human player.
+     *
+     * Minimax wants a full turn move, including every forced capture in a
+     * chain. Human players expect to click each jump one at a time, so this
+     * method slices a full legal capture path at the clicked landing square.
+     */
+    public static Move findLegalStep(Tiles[][] board, PlayerType side,
+                                     int fromRow, int fromCol, int toRow, int toCol) {
+        for (Move move : getLegalMoves(board, side)) {
+            if (move.getFromRow() != fromRow || move.getFromCol() != fromCol) {
+                continue;
+            }
+            if (!move.isCapture()) {
+                if (move.getToRow() == toRow && move.getToCol() == toCol) {
+                    return move;
+                }
+                continue;
+            }
+            Move partial = partialMoveThrough(move, toRow, toCol);
+            if (partial != null) {
+                return partial;
+            }
+        }
+        return null;
+    }
+
+    /** Returns true when the chosen piece still has a capture after a jump. */
+    public static boolean hasCaptureFrom(Tiles[][] board, PlayerType side, int row, int col) {
+        if (!inBounds(board, row, col) || !board[row][col].isOccupied()
+                || board[row][col].getPiece().getSide() != side) {
+            return false;
+        }
+        return !getCaptureMoves(board, row, col).isEmpty();
+    }
+
+    /**
+     * Breaks a full turn move into individual board updates.
+     *
+     * GUI animation uses these one-step moves so a multi-capture is visible as
+     * a short sequence. The AI still chooses the original full move.
+     */
+    public static List<Move> splitMove(Move move) {
+        ArrayList<Move> steps = new ArrayList<>();
+        if (!move.isCapture()) {
+            steps.add(new Move(move));
+            return steps;
+        }
+        for (int i = 1; i < move.path.size(); i++) {
+            int[] from = move.path.get(i - 1);
+            int[] to = move.path.get(i);
+            Move step = new Move(from[0], from[1]);
+            step.addCapture(move.captured.get(i - 1)[0], move.captured.get(i - 1)[1]);
+            step.addStep(to[0], to[1]);
+            steps.add(step);
+        }
+        return steps;
+    }
+
     public static boolean hasLegalMove(Tiles[][] board, PlayerType side) {
         return !getLegalMoves(board, side).isEmpty();
     }
@@ -664,6 +723,18 @@ public class CheckersAI {
             }
         }
         return false;
+    }
+
+    private static Move partialMoveThrough(Move move, int row, int col) {
+        int[] firstLanding = move.path.get(1);
+        if (firstLanding[0] == row && firstLanding[1] == col) {
+            Move partial = new Move(move.getFromRow(), move.getFromCol());
+            int[] captured = move.captured.get(0);
+            partial.addCapture(captured[0], captured[1]);
+            partial.addStep(row, col);
+            return partial;
+        }
+        return null;
     }
 
     private static int centerBonus(Tiles[][] board, int row, int col) {

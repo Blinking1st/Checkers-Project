@@ -1,5 +1,6 @@
 package Checkers;
 
+import java.util.List;
 import java.util.Scanner;
 
 /**
@@ -11,8 +12,11 @@ public class TextGame {
     private Tiles[][] theBoard;
     private Player RED, BLACK;
     private int turnCounter = 0;
+    private int currentRow = 0;
+    private int currentCol = 0;
     private boolean gameOver = false;
     private boolean playComputer = false;
+    private boolean continuousJump = false;
     private PlayerType computerSide = PlayerType.RED;
     private final CheckersAI computerPlayer = new CheckersAI();
     private final Scanner scanner = new Scanner(System.in);
@@ -108,7 +112,9 @@ public class TextGame {
             }
 
             if (!gameOver) {
-                switchTurns();
+                if (!continuousJump) {
+                    switchTurns();
+                }
                 printBoard();
             }
         }
@@ -131,6 +137,11 @@ public class TextGame {
             System.out.println("That is not your piece.");
             return;
         }
+        if (continuousJump && (from[0] != currentRow || from[1] != currentCol)) {
+            System.out.println("You must continue capturing with the same piece at "
+                    + currentRow + " " + currentCol + ".");
+            return;
+        }
 
         int[] to = promptCoords("Select destination (row col): ");
         if (to == null) {
@@ -140,18 +151,27 @@ public class TextGame {
             resign(currentTurn);
             return;
         }
-        if (!inBounds(to[0], to[1]) || (to[0] + to[1]) % 2 == 0) {
+        if (!inBounds(to[0], to[1])) {
             System.out.println("That destination is not playable.");
             return;
         }
 
-        CheckersAI.Move move = CheckersAI.findLegalMove(theBoard, currentTurn,
+        CheckersAI.Move move = CheckersAI.findLegalStep(theBoard, currentTurn,
                 from[0], from[1], to[0], to[1]);
         if (move == null) {
             System.out.println("Invalid move. If any capture is available, a capture must be taken.");
             return;
         }
         applyGameMove(move);
+        if (move.isCapture() && CheckersAI.hasCaptureFrom(theBoard, currentTurn,
+                move.getToRow(), move.getToCol())) {
+            continuousJump = true;
+            currentRow = move.getToRow();
+            currentCol = move.getToCol();
+            System.out.println("Another capture is available. Continue with the same piece.");
+        } else {
+            continuousJump = false;
+        }
     }
 
     private void makeComputerMove(PlayerType currentTurn) {
@@ -163,7 +183,23 @@ public class TextGame {
         System.out.println("Computer moves from " + move.getFromRow() + " " + move.getFromCol()
                 + " to " + move.getToRow() + " " + move.getToCol()
                 + (move.isCapture() ? " and captures " + move.captureCount() + " piece(s)." : "."));
-        applyGameMove(move);
+        List<CheckersAI.Move> steps = CheckersAI.splitMove(move);
+        for (int i = 0; i < steps.size(); i++) {
+            applyGameMove(steps.get(i));
+            if (gameOver || i == steps.size() - 1) {
+                return;
+            }
+            printBoard();
+            pauseBetweenComputerCaptures();
+        }
+    }
+
+    private void pauseBetweenComputerCaptures() {
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void applyGameMove(CheckersAI.Move move) {

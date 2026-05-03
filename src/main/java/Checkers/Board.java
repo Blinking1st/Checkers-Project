@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.List;
 
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -155,7 +156,6 @@ public class Board extends JComponent {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				makeComputerMove();
-				computerThinking = false;
 			}
 		});
 		timer.setRepeats(false);
@@ -173,14 +173,52 @@ public class Board extends JComponent {
 					computerSide + " has no legal moves. "
 							+ CheckersAI.opponent(computerSide) + " wins!");
 			frame.dispose();
+			computerThinking = false;
 			return;
 		}
 
-		applyBoardMove(move);
-		if (frame.isDisplayable()) {
+		List<CheckersAI.Move> steps = CheckersAI.splitMove(move);
+		if (steps.size() > 1) {
+			animateComputerMove(steps, 0);
+		} else {
+			applyBoardMove(move);
+			finishComputerTurn();
+		}
+	}
+
+	private void animateComputerMove(List<CheckersAI.Move> steps, int index) {
+		if (frame == null || !frame.isDisplayable()) {
+			computerThinking = false;
+			return;
+		}
+
+		applyBoardMove(steps.get(index));
+		panel.repaint();
+		if (!frame.isDisplayable()) {
+			computerThinking = false;
+			return;
+		}
+		if (index == steps.size() - 1) {
+			finishComputerTurn();
+			return;
+		}
+
+		Timer timer = new Timer(500, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				animateComputerMove(steps, index + 1);
+			}
+		});
+		timer.setRepeats(false);
+		timer.start();
+	}
+
+	private void finishComputerTurn() {
+		if (frame != null && frame.isDisplayable()) {
 			switchTurns();
 			panel.repaint();
 		}
+		computerThinking = false;
 	}
 
 	private void applyBoardMove(CheckersAI.Move move) {
@@ -450,16 +488,31 @@ public class Board extends JComponent {
 			System.err.println("No piece selected - please click your piece first");
 			return;
 		}
+		if (continuousJump && (currentRow != lastPieceMoved.getRow()
+				|| currentCol != lastPieceMoved.getCol())) {
+			System.err.println("You must continue capturing with the same piece");
+			return;
+		}
 
-		CheckersAI.Move guiMove = CheckersAI.findLegalMove(theBoard, turn(),
+		CheckersAI.Move guiMove = CheckersAI.findLegalStep(theBoard, turn(),
 				currentRow, currentCol, destRow, destCol);
 		if (guiMove == null) {
 			System.err.println("Invalid move. If a capture is available, it must be taken.");
 			return;
 		}
 
-		continuousJump = false;
 		applyBoardMove(guiMove);
+		if (guiMove.isCapture() && CheckersAI.hasCaptureFrom(theBoard, turn(),
+				guiMove.getToRow(), guiMove.getToCol())) {
+			continuousJump = true;
+			currentRow = guiMove.getToRow();
+			currentCol = guiMove.getToCol();
+			panel.repaint();
+			System.out.println("Another capture is available with the same piece.");
+			return;
+		}
+
+		continuousJump = false;
 		if (frame.isDisplayable()) {
 			switchTurns();
 			panel.repaint();

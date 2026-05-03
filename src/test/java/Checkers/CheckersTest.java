@@ -364,6 +364,37 @@ public class CheckersTest {
     }
 
     @Test
+    public void testHumanMultiCaptureReturnsOnlyClickedStep() {
+        Tiles[][] board = emptyBoard();
+        board[1][1].addPiece(new Pieces(1, 1, PieceType.RED));
+        board[2][2].addPiece(new Pieces(2, 2, PieceType.BLACK));
+        board[4][4].addPiece(new Pieces(4, 4, PieceType.BLACK));
+
+        CheckersAI.Move step = CheckersAI.findLegalStep(board, PlayerType.RED, 1, 1, 3, 3);
+
+        assertNotNull(step);
+        assertTrue(step.isCapture());
+        assertEquals(1, step.captureCount());
+        assertEquals(3, step.getToRow());
+        assertEquals(3, step.getToCol());
+    }
+
+    @Test
+    public void testSplitMoveBreaksMultiCaptureIntoAnimatedSteps() {
+        Tiles[][] board = emptyBoard();
+        board[1][1].addPiece(new Pieces(1, 1, PieceType.RED));
+        board[2][2].addPiece(new Pieces(2, 2, PieceType.BLACK));
+        board[4][4].addPiece(new Pieces(4, 4, PieceType.BLACK));
+
+        CheckersAI.Move capture = CheckersAI.findLegalMove(board, PlayerType.RED, 1, 1, 5, 5);
+
+        assertNotNull(capture);
+        assertEquals(2, CheckersAI.splitMove(capture).size());
+        assertEquals(3, CheckersAI.splitMove(capture).get(0).getToRow());
+        assertEquals(5, CheckersAI.splitMove(capture).get(1).getToRow());
+    }
+
+    @Test
     public void testKingCanMoveMultipleSpacesInStraightLine() {
         Tiles[][] board = emptyBoard();
         board[5][1].addPiece(new Pieces(5, 1, PieceType.RED_KING));
