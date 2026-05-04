@@ -298,23 +298,23 @@ public class TextGame {
         for (int row = 0; row < ROW; row++) {
             System.out.printf(" %2d |", row);
             for (int col = 0; col < COL; col++) {
-                if ((row + col) % 2 == 0) {
-                    System.out.print("###|");
-                } else if (!theBoard[row][col].isOccupied()) {
-                    System.out.print(" . |");
-                } else {
+                if (theBoard[row][col].isOccupied()) {
                     switch (theBoard[row][col].getPiece().getType()) {
                         case RED: System.out.print(" r |"); break;
                         case BLACK: System.out.print(" b |"); break;
                         case RED_KING: System.out.print(" R |"); break;
                         case BLACK_KING: System.out.print(" B |"); break;
                     }
+                } else if ((row + col) % 2 == 0) {
+                    System.out.print("###|");
+                } else {
+                    System.out.print(" . |");
                 }
             }
             System.out.println();
             printDivider();
         }
-        System.out.println("  r=Red  b=Black  R=Red King  B=Black King  .=empty  #=unavailable");
+        System.out.println("  r=Red  b=Black  R=Red King  B=Black King  . or ###=Available");
         System.out.println();
     }
 
