@@ -145,6 +145,14 @@ public class Board extends JComponent {
 		return playComputer && turn() == computerSide;
 	}
 
+	public boolean hasCaptureAvailableAt(int row, int col) {
+		if (continuousJump && (lastPieceMoved == null
+				|| lastPieceMoved.getRow() != row || lastPieceMoved.getCol() != col)) {
+			return false;
+		}
+		return CheckersAI.hasCaptureFrom(theBoard, turn(), row, col);
+	}
+
 	private void maybeStartComputerTurn() {
 		if (!playComputer || computerThinking || continuousJump
 				|| turn() != computerSide || frame == null || !frame.isDisplayable()) {

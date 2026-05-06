@@ -105,13 +105,14 @@ public class TextGame {
             }
 
             System.out.println("=== " + currentTurn + "'s turn ===");
+            boolean turnFinished = true;
             if (playComputer && currentTurn == computerSide) {
                 makeComputerMove(currentTurn);
             } else {
-                makeHumanMove(currentTurn);
+                turnFinished = makeHumanMove(currentTurn);
             }
 
-            if (!gameOver) {
+            if (!gameOver && turnFinished) {
                 if (!continuousJump) {
                     switchTurns();
                 }
@@ -120,47 +121,47 @@ public class TextGame {
         }
     }
 
-    private void makeHumanMove(PlayerType currentTurn) {
+    private boolean makeHumanMove(PlayerType currentTurn) {
         int[] from = promptCoords("Select piece (row col): ");
         if (from == null) {
-            return;
+            return false;
         }
         if (from[0] == -1) {
             resign(currentTurn);
-            return;
+            return true;
         }
         if (!inBounds(from[0], from[1]) || !theBoard[from[0]][from[1]].isOccupied()) {
             System.out.println("No playable piece there.");
-            return;
+            return false;
         }
         if (theBoard[from[0]][from[1]].getPiece().getSide() != currentTurn) {
             System.out.println("That is not your piece.");
-            return;
+            return false;
         }
         if (continuousJump && (from[0] != currentRow || from[1] != currentCol)) {
             System.out.println("You must continue capturing with the same piece at "
                     + currentRow + " " + currentCol + ".");
-            return;
+            return false;
         }
 
         int[] to = promptCoords("Select destination (row col): ");
         if (to == null) {
-            return;
+            return false;
         }
         if (to[0] == -1) {
             resign(currentTurn);
-            return;
+            return true;
         }
         if (!inBounds(to[0], to[1])) {
             System.out.println("That destination is not playable.");
-            return;
+            return false;
         }
 
         CheckersAI.Move move = CheckersAI.findLegalStep(theBoard, currentTurn,
                 from[0], from[1], to[0], to[1]);
         if (move == null) {
             System.out.println("Invalid move. If any capture is available, a capture must be taken.");
-            return;
+            return false;
         }
         applyGameMove(move);
         if (move.isCapture() && CheckersAI.hasCaptureFrom(theBoard, currentTurn,
@@ -172,6 +173,7 @@ public class TextGame {
         } else {
             continuousJump = false;
         }
+        return true;
     }
 
     private void makeComputerMove(PlayerType currentTurn) {

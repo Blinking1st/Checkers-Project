@@ -8,12 +8,12 @@ import java.util.Map;
 
 /**
  * Generates A-level legal moves and chooses computer moves with minimax.
- * The rule set here allows movement in all eight straight-line directions,
+ * The rule set here allows movement in all eight straight line directions,
  * requires captures when available, and searches four plies ahead.
  */
 public class CheckersAI {
     public static final int LOOKAHEAD_DEPTH = 4;
-    private static final long THINK_TIME_MILLIS = 2000;
+    private static final long THINK_TIME_MILLIS = 200;
     private static final int QUIESCENCE_DEPTH = 2;
 
     private static final int[][] DIRECTIONS = {

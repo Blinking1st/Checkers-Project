@@ -1,7 +1,9 @@
 package Checkers;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Stroke;
 import javax.swing.JPanel;
 /**
  * Class representing a tile on the Checkers game board. Each tile has specific coordinates (row and column) and can hold a piece. The Tiles class provides methods for adding and removing pieces, checking if the tile is occupied, and handling selection for potential moves. The paintComponent method is overridden to visually represent the tile and any piece it may contain, allowing for a graphical representation of the game board. This class is essential for managing the state of each tile and facilitating interactions between pieces and the game board.
@@ -129,6 +131,20 @@ public class Tiles extends JPanel {
 				}
 			}
 			g2.fillOval(5, 5, 65, 65); // Creates "checker" look
+			if (shouldHighlightCapture()) {
+				Stroke oldStroke = g2.getStroke();
+				g2.setColor(Color.YELLOW);
+				g2.setStroke(new BasicStroke(4));
+				g2.drawOval(3, 3, 69, 69);
+				g2.setStroke(oldStroke);
+			}
 		}
+	}
+
+	private boolean shouldHighlightCapture() {
+		return board != null
+				&& piece != null
+				&& piece.getSide() == board.turn()
+				&& board.hasCaptureAvailableAt(row, col);
 	}
 }
